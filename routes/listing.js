@@ -5,22 +5,9 @@ const wrapAsync = (fn) => {
     fn(req, res, next).catch(next);
   };
 };
-const {listingSchema} = require("../schema.js");
-const ExpressError = require("../utils/ExpressError.js");
 const Listing = require("../models/listing.js");
+const { isLoggedIn, isOwner,validateListing } = require("../middleware.js");
 
-
-
- // Make schemaValidater variable
-const validateListing = (req,res, next) => {
-  let {error} = listingSchema.validate(req.body);
-  if(error){
-    let errMsg = error.details.map((el)=>el.message).join(",");
-    throw new ExpressError(400,errMsg);
-  }else {
-    next();
-  }
-};
 
 //Index Route
 router.get("/", wrapAsync(async (req, res) => {
@@ -29,65 +16,95 @@ router.get("/", wrapAsync(async (req, res) => {
 }));
 
 //New Route
-router.get("/new", (req, res) => {
+router.get("/new", isLoggedIn, (req, res) => {
   res.render("listings/new.ejs");
 });
 
 //Show Route
 router.get("/:id", wrapAsync(async (req, res) => {
   let { id } = req.params;
-  const listing = await Listing.findById(id).populate("reviews");
+  const listing = await Listing.findById(id)
+    .populate({path:"reviews",
+        populate: {
+        path: "author",
+    },
+    })
+    .populate("owner");
   if(!listing){
-    req.flash("error","Listing you requested for does not exists");
-    res.redirect("/listings");    
+    req.flash("error", "Listing you requested for does not exist");
+    return res.redirect("/listings");    
   }
   res.render("listings/show.ejs", { listing });
 }));
 
 //Create Route
-router.post("/", wrapAsync(async (req, res) => {
+router.post("/", isLoggedIn, validateListing, wrapAsync(async (req, res) => {
   const { listing } = req.body;
 
+  // Handle image field properly
+  if (!listing.image) {
+    listing.image = {}; // Initialize image object if it doesn't exist
+  }
+  
   // Remove empty image values so schema defaults apply
-  if (!listing.image.url) listing.image.url = undefined;
-  if (!listing.image.filename) listing.image.filename = undefined;
+  if (!listing.image.url || listing.image.url.trim() === "") {
+    delete listing.image.url; // Let schema default take over
+  }
+  if (!listing.image.filename || listing.image.filename.trim() === "") {
+    delete listing.image.filename; // Let schema default take over
+  }
 
+  // Create new listing and set owner
   const newListing = new Listing(listing);
+  newListing.owner = req.user._id; // Set owner AFTER creating the object
+  
   await newListing.save();
   req.flash("success", "Listing created successfully!");
   res.redirect("/listings");
 }));
 
-
 //Edit Route
-router.get("/:id/edit", wrapAsync(async (req, res) => {
+router.get("/:id/edit", isLoggedIn,isOwner, wrapAsync(async (req, res) => {
   let { id } = req.params;
   const listing = await Listing.findById(id);
+  if(!listing){
+    req.flash("error", "Listing you requested for does not exist");
+    return res.redirect("/listings");    
+  }
   res.render("listings/edit.ejs", { listing });
 }));
 
 //Update Route
-router.put("/:id", wrapAsync(async (req, res) => {
+router.put("/:id", isLoggedIn, isOwner ,validateListing, wrapAsync(async (req, res) => {
   const { id } = req.params;
   const { listing } = req.body;
 
-  // Remove empty image values
-  if (!listing.image.url) listing.image.url = undefined;
-  if (!listing.image.filename) listing.image.filename = undefined;
+  // Handle image field properly
+  if (!listing.image) {
+    listing.image = {};
+  };
+  
+  // Remove empty image values so schema defaults apply
+  if (!listing.image.url || listing.
+    image.url.trim() === "") {
+    delete listing.image.url;
+  };
+  if (!listing.image.filename || listing
+    .image.filename.trim() === "") {
+    delete listing.image.filename;
+  };
 
   await Listing.findByIdAndUpdate(id, { $set: listing }, { runValidators: true });
-    req.flash("success", "Listing updated successfully!");
+  req.flash("success", "Listing updated successfully!");
   res.redirect(`/listings/${id}`);
 }));
 
-
-
 //Delete Route
-router.delete("/:id", wrapAsync(async (req, res) => {
+router.delete("/:id", isLoggedIn,isOwner, wrapAsync(async (req, res) => {
   let { id } = req.params;
   let deletedListing = await Listing.findByIdAndDelete(id);
   console.log(deletedListing);
-   req.flash("success", "Listing Deleted successfully!");
+  req.flash("success", "Listing Deleted successfully!");
   res.redirect("/listings");
 }));
 

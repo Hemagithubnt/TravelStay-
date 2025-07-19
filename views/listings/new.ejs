@@ -1,78 +1,107 @@
 <% layout("/layouts/boilerplate") %>
- <div class="row">
+
+<div class="row">
   <div class="col-8 offset-2">
     <br>
     <h3><b>Create a New Listing</b></h3><br>
-
+    
     <form id="listingForm" method="POST" action="/listings" novalidate class="needs-validation">
       <div class="mb-3">
         <label for="title" class="form-label">Title</label>
         <input name="listing[title]" placeholder="Title" type="text" class="form-control" id="title" required>
         <div class="invalid-feedback">Title is required.</div>
       </div>
-
+      
       <div class="mb-3">
         <label for="description" class="form-label">Description</label>
         <textarea name="listing[description]" placeholder="Description" class="form-control" id="description" required></textarea>
         <div class="invalid-feedback">Description is required.</div>
       </div>
-
+      
       <div class="mb-3">
-        <label for="url" class="form-label">Image URL</label>
-        <input name="listing[image][url]" placeholder="Image URL" type="url" class="form-control" id="url">
-        <div class="invalid-feedback">Valid image URL is required.</div>
+        <label for="url" class="form-label">Image URL <small class="text-muted">(Optional - leave empty for default image)</small></label>
+        <input name="listing[image][url]" placeholder="https://example.com/image.jpg" type="url" class="form-control" id="url">
+        <div class="invalid-feedback">Please enter a valid URL.</div>
       </div>
-
+      
       <div class="mb-3">
-        <label for="filename" class="form-label">Image Name</label>
-        <input name="listing[image][filename]" placeholder="Image filename" type="text" class="form-control" id="filename" required>
-        <div class="invalid-feedback">Image filename is required.</div>
+        <label for="filename" class="form-label">Image Name <small class="text-muted">(Optional - leave empty for default name)</small></label>
+        <input name="listing[image][filename]" placeholder="my-image.jpg" type="text" class="form-control" id="filename">
+        <div class="invalid-feedback">Please enter a valid filename.</div>
       </div>
-
+      
       <div class="row">
         <div class="mb-3 col-md-4">
           <label for="price" class="form-label">Price</label>
-          <input name="listing[price]" placeholder="Enter price" class="form-control" id="price" type="number" required>
-          <div class="invalid-feedback">Price is required.</div>
+          <input name="listing[price]" placeholder="Enter price" class="form-control" id="price" type="number" min="0" required>
+          <div class="invalid-feedback">Price is required and must be positive.</div>
         </div>
-
+        
         <div class="mb-3 col-md-8">
           <label for="country" class="form-label">Country</label>
           <input name="listing[country]" placeholder="India, America" type="text" class="form-control" id="country" required>
           <div class="invalid-feedback">Country is required.</div>
         </div>
       </div>
-
+      
       <div class="mb-3">
         <label for="location" class="form-label">Location</label>
         <input name="listing[location]" placeholder="Noida, Aligarh" type="text" class="form-control" id="location" required>
         <div class="invalid-feedback">Location is required.</div>
       </div>
-
+      
       <button class="btn btn-dark" type="submit">Add</button>
     </form>
   </div>
 </div>
 
-<!-- <script>
+<script>
+  // Optional: Form validation script
   const form = document.getElementById('listingForm');
   form.addEventListener('submit', function (event) {
     let valid = true;
-    [...form.elements].forEach(input => {
-      if (input.hasAttribute('required') && !input.value.trim()) {
+    
+    // Check required fields
+    const requiredFields = form.querySelectorAll('[required]');
+    requiredFields.forEach(input => {
+      if (!input.value.trim()) {
         input.classList.add('is-invalid');
         valid = false;
       } else {
         input.classList.remove('is-invalid');
       }
     });
+    
+    // Validate URL if provided
+    const urlInput = document.getElementById('url');
+    if (urlInput.value.trim() && !isValidURL(urlInput.value)) {
+      urlInput.classList.add('is-invalid');
+      valid = false;
+    } else {
+      urlInput.classList.remove('is-invalid');
+    }
+    
+    // Validate price
+    const priceInput = document.getElementById('price');
+    if (priceInput.value && parseFloat(priceInput.value) < 0) {
+      priceInput.classList.add('is-invalid');
+      valid = false;
+    } else {
+      priceInput.classList.remove('is-invalid');
+    }
+    
     if (!valid) {
       event.preventDefault();
       event.stopPropagation();
     }
   });
-</script> -->
-
- 
- 
- 
+  
+  function isValidURL(string) {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+</script>
